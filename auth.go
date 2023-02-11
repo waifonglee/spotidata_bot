@@ -1,18 +1,20 @@
-package main2
+package main
 
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+	
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
-	"net/http"
-	"log"
 )
 
 const scopes = "user-top-read"
  
 var (
-	auth *spotifyauth.Authenticator;
+	auth *spotifyauth.Authenticator
+	user *spotify.PrivateUser
 	ch    = make(chan *spotify.Client)
 	state = "abc123"
 )
@@ -31,10 +33,11 @@ func getAuthUrl() string {
 
 func authentication() {
 	client := <-ch
-	user, err := client.CurrentUser(context.Background())
+	u, err := client.CurrentUser(context.Background())
 	if err != nil {
 		log.Fatal(err)
 	}
+	user = u
 	fmt.Println("You are logged in as: ", user.ID)
 }
 
@@ -48,8 +51,7 @@ func completeAuth(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		log.Fatalf("State mismatch: %s != %s\n", st, state)
 	}
-
 	client := spotify.New(auth.Client(r.Context(), token))
-	fmt.Fprintf(w, "Login Completed")
 	ch <- client
+	fmt.Fprintf(w, "Login complete, please close the window")
 }

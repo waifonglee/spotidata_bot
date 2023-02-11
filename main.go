@@ -1,6 +1,7 @@
 package main
 
 import (
+	
 	"fmt"
 	"log"
 	"net/http"
@@ -15,20 +16,20 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	srv := http.Server{Addr: "localhost:8080"}
+	
 	http.HandleFunc("/spotifylogin", completeAuth)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Got request for:", r.URL.String())
 	})
 	go func() {
-		err := http.ListenAndServe(":8080", nil)
+		err := srv.ListenAndServe()
 		if err != nil {
 			log.Fatal(err)
 		}
 	}()
 	
 	InitSpotifyAuth(os.Getenv("SPOTIFY_REDIRECT_URL"))
-
 
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN"))
 	if err != nil {
@@ -68,25 +69,20 @@ func main() {
 		case "start":
 			fmt.Printf(getAuthUrl())
 			msg.Text = "Please login to spotify here " + getAuthUrl()
-		}
-
-
-		// Now that we know we've gotten a new message, we can construct a
-		// reply! We'll take the Chat ID and Text from the incoming message
-		// and use it to create a new message.
-		//msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		// We'll also say that this message is a reply to the previous message.
-		// For any other specifications than Chat ID or Text, you'll need to
-		// set fields on the `MessageConfig`.
-		//msg.ReplyToMessageID = update.Message.MessageID
-
-		// Okay, we're sending our message off! We don't care about the message
-		// we just sent, so we'll discard it.
-		if _, err := bot.Send(msg); err != nil {
-			// Note that panics are a bad way to handle errors. Telegram can
-			// have service outages or network errors, you should retry sending
-			// messages or more gracefully handle failures.
-			panic(err)
+			if _, err := bot.Send(msg); err != nil {
+				// Note that panics are a bad way to handle errors. Telegram can
+				// have service outages or network errors, you should retry sending
+				// messages or more gracefully handle failures.
+				panic(err)
+			}
+			authentication()
+			msg.Text = "You are logged in as " + user.DisplayName
+			if _, err := bot.Send(msg); err != nil {
+				// Note that panics are a bad way to handle errors. Telegram can
+				// have service outages or network errors, you should retry sending
+				// messages or more gracefully handle failures.
+				panic(err)
+			}
 		}
 	}
 }

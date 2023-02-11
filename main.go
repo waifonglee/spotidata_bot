@@ -1,7 +1,6 @@
 package main
 
 import (
-	
 	"fmt"
 	"log"
 	"net/http"
@@ -17,7 +16,7 @@ func main() {
 		panic(err)
 	}
 	srv := http.Server{Addr: "localhost:8080"}
-	
+
 	http.HandleFunc("/spotifylogin", completeAuth)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Got request for:", r.URL.String())
@@ -28,7 +27,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
-	
+
 	InitSpotifyAuth(os.Getenv("SPOTIFY_REDIRECT_URL"))
 
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN"))
@@ -68,15 +67,31 @@ func main() {
 		switch update.Message.Command() {
 		case "start":
 			fmt.Printf(getAuthUrl())
-			msg.Text = "Please login to spotify here " + getAuthUrl()
+			if c == nil {
+				msg.Text = "Please login to spotify here " + getAuthUrl()
+				if _, err := bot.Send(msg); err != nil {
+					// Note that panics are a bad way to handle errors. Telegram can
+					// have service outages or network errors, you should retry sending
+					// messages or more gracefully handle failures.
+					panic(err)
+				}
+				authentication()
+				msg.Text = "You are logged in as " + user.DisplayName
+				if _, err := bot.Send(msg); err != nil {
+					// Note that panics are a bad way to handle errors. Telegram can
+					// have service outages or network errors, you should retry sending
+					// messages or more gracefully handle failures.
+					panic(err)
+				}
+			}
+			msg.Text = getTopArtists()
 			if _, err := bot.Send(msg); err != nil {
 				// Note that panics are a bad way to handle errors. Telegram can
 				// have service outages or network errors, you should retry sending
 				// messages or more gracefully handle failures.
 				panic(err)
 			}
-			authentication()
-			msg.Text = "You are logged in as " + user.DisplayName
+			msg.Text = getTopTracks()
 			if _, err := bot.Send(msg); err != nil {
 				// Note that panics are a bad way to handle errors. Telegram can
 				// have service outages or network errors, you should retry sending

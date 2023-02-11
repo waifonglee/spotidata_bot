@@ -5,26 +5,54 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	
+
 	"github.com/zmb3/spotify/v2"
 	spotifyauth "github.com/zmb3/spotify/v2/auth"
 )
 
 const scopes = "user-top-read"
- 
+
 var (
-	auth *spotifyauth.Authenticator
-	user *spotify.PrivateUser
-	ch    = make(chan *spotify.Client)
-	state = "abc123"
+	auth   *spotifyauth.Authenticator
+	user   *spotify.PrivateUser
+	ch     = make(chan *spotify.Client)
+	state  = "abc123"
+	c *spotify.Client
 )
 
 func InitSpotifyAuth(redirectURL string) {
 	auth = spotifyauth.New(
 		spotifyauth.WithRedirectURL(redirectURL),
-		spotifyauth.WithScopes(spotifyauth.ScopeUserTopRead),
-		spotifyauth.WithScopes(spotifyauth.ScopeUserReadPrivate),
+		spotifyauth.WithScopes(
+			spotifyauth.ScopeUserTopRead,
+			spotifyauth.ScopeUserReadPrivate,
+			spotifyauth.ScopeUserFollowRead,
+		),
 	)
+}
+
+func getTopArtists() string{
+	artists, err := c.CurrentUsersTopArtists(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	s := ""
+	for _, a := range artists.Artists {
+		s += a.Name + "\n"
+	}
+	return s
+}
+
+func getTopTracks() string{
+	tracks, err := c.CurrentUsersTopTracks(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	s := ""
+	for _, a := range tracks.Tracks {
+		s += a.Name + "\n"
+	}
+	return s
 }
 
 func getAuthUrl() string {
@@ -33,6 +61,7 @@ func getAuthUrl() string {
 
 func authentication() {
 	client := <-ch
+	fmt.Println(c)
 	u, err := client.CurrentUser(context.Background())
 	if err != nil {
 		log.Fatal(err)
@@ -51,7 +80,7 @@ func completeAuth(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		log.Fatalf("State mismatch: %s != %s\n", st, state)
 	}
-	client := spotify.New(auth.Client(r.Context(), token))
-	ch <- client
+	c = spotify.New(auth.Client(r.Context(), token))
+	ch <- c
 	fmt.Fprintf(w, "Login complete, please close the window")
 }
